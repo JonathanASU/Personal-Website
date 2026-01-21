@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Access Required</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <section class="login-container">
+    <h1>Restricted Access</h1>
+    <p>Enter the 5-digit access PIN</p>
+
+    <input
+      type="password"
+      id="pin"
+      maxlength="5"
+      inputmode="numeric"
+      placeholder="•••••"
+      autofocus
+    />
+
+    <button id="enterBtn">Enter</button>
+
+    <p class="error" id="error"></p>
+  </section>
+
+  <script>
+    /* ================= CONFIG ================= */
+    const CORRECT_PIN = "54321";     // 🔒 CHANGE THIS
+    const MAX_ATTEMPTS = 3;
+    const LOCKOUT_MINUTES = 30;
+    /* ========================================== */
+
+    const pinInput = document.getElementById("pin");
+    const error = document.getElementById("error");
+    const button = document.getElementById("enterBtn");
+
+    const attemptsKey = "pinAttempts";
+    const lockoutKey = "lockoutUntil";
+
+    function checkLockout() {
+      const lockoutUntil = localStorage.getItem(lockoutKey);
+
+      if (lockoutUntil && Date.now() < lockoutUntil) {
+        lockUI(lockoutUntil);
+        return true;
+      }
+
+      return false;
+    }
+
+    function lockUI(lockoutUntil) {
+      pinInput.disabled = true;
+      button.disabled = true;
+
+      const minutesLeft = Math.ceil(
+        (lockoutUntil - Date.now()) / 60000
+      );
+
+      error.textContent =
+        `You cannot go any farther.`;
+    }
+
+    function checkPin() {
+      if (checkLockout()) return;
+
+      const pin = pinInput.value;
+
+      if (pin === CORRECT_PIN) {
+        localStorage.removeItem(attemptsKey);
+        localStorage.removeItem(lockoutKey);
+        sessionStorage.setItem("authorized", "true");
+        window.location.href = "home.html";
+        return;
+      }
+
+      let attempts = Number(localStorage.getItem(attemptsKey)) || 0;
+      attempts++;
+      localStorage.setItem(attemptsKey, attempts);
+
+      if (attempts >= MAX_ATTEMPTS) {
+        const lockoutUntil = Date.now() + LOCKOUT_MINUTES * 60 * 1000;
+        localStorage.setItem(lockoutKey, lockoutUntil);
+        lockUI(lockoutUntil);
+      } else {
+        error.textContent =
+          `Invalid PIN. ${MAX_ATTEMPTS - attempts} attempt(s) remaining.`;
+      }
+
+      pinInput.value = "";
+      pinInput.focus();
+    }
+
+    button.addEventListener("click", checkPin);
+
+    pinInput.addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        checkPin();
+      }
+    });
+
+    // Run on page load
+    checkLockout();
+  </script>
+
+</body>
+</html>
